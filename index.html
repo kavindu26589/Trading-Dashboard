@@ -2,24 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Candlestick Chart – Real-Time Demo</title>
+  <title>Candlestick Chart – Manual Registration</title>
 
-  <!-- Chart.js & Financial Plugin (CDN) -->
-  <!-- Make sure the versions match (Chart.js v4 + chartjs-chart-financial@3) -->
+  <!-- 1) Load Chart.js v4 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1"></script>
+
+  <!-- 2) Load Date-FNS Adapter (for time scale) -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0"></script>
+
+  <!-- 3) Load chartjs-chart-financial plugin -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0"></script>
 
   <style>
-    /* Basic Reset */
-    * {
-      box-sizing: border-box;
-      margin: 0; padding: 0;
-    }
+    /* Basic styling */
     body {
       font-family: Arial, sans-serif;
+      margin: 0; padding: 0;
       background: #f0f2f5;
-      color: #333;
     }
     .container {
       max-width: 900px;
@@ -30,9 +29,8 @@
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     h1 {
+      font-size: 1.8em;
       margin-bottom: 10px;
-      font-size: 2em;
-      color: #2c3e50;
     }
     .header {
       display: flex;
@@ -43,31 +41,18 @@
     }
     .header select, .header button {
       padding: 8px 12px;
-      font-size: 1em;
       margin: 5px 0;
       border: 1px solid #ccc;
       border-radius: 5px;
       background: #fff;
       cursor: pointer;
-      transition: background 0.2s;
-    }
-    .header button:hover, .header select:hover {
-      background: #e8e8e8;
     }
     .info-box {
-      margin-bottom: 20px;
       padding: 15px;
       background: #f7f7f7;
       border: 1px solid #ddd;
       border-radius: 8px;
-    }
-    .info-box h2 {
-      margin-top: 0;
-      color: #2c3e50;
-    }
-    .info-box p {
-      font-size: 1.2em;
-      margin: 5px 0;
+      margin-bottom: 20px;
     }
     .chart-container {
       width: 100%;
@@ -78,10 +63,9 @@
       width: 100% !important;
       height: auto !important;
     }
-
     /* Dark Mode */
     .dark-mode {
-      background-color: #2f2f2f;
+      background: #2f2f2f;
       color: #fff;
     }
     .dark-mode .container {
@@ -91,7 +75,7 @@
       background: #4a4a4a;
       border-color: #555;
     }
-    .dark-mode h1, .dark-mode h2, .dark-mode p {
+    .dark-mode h1, .dark-mode p, .dark-mode label {
       color: #fff;
     }
     .dark-mode select, .dark-mode button {
@@ -99,181 +83,162 @@
       color: #fff;
       border-color: #666;
     }
-    .dark-mode select:hover, .dark-mode button:hover {
-      background: #666;
-    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Real-Time Candlestick Chart</h1>
-    <div class="header">
-      <div>
-        <label for="coin-select">Select Asset:</label>
-        <select id="coin-select">
-          <option value="bitcoin">Bitcoin (BTC)</option>
-          <option value="ethereum">Ethereum (ETH)</option>
-          <option value="dogecoin">Dogecoin (DOGE)</option>
-        </select>
-      </div>
-      <button id="toggle-theme">Toggle Dark Mode</button>
+<div class="container">
+  <h1>Real-Time Candlestick Chart (Manual Registration)</h1>
+  <div class="header">
+    <div>
+      <label for="coin-select">Select Asset:</label>
+      <select id="coin-select">
+        <option value="bitcoin">Bitcoin (BTC)</option>
+        <option value="ethereum">Ethereum (ETH)</option>
+        <option value="dogecoin">Dogecoin (DOGE)</option>
+      </select>
     </div>
-
-    <div class="info-box">
-      <h2>Live Price</h2>
-      <p id="live-price">Loading...</p>
-    </div>
-
-    <div class="chart-container">
-      <canvas id="candlestickChart"></canvas>
-    </div>
+    <button id="toggle-theme">Toggle Dark Mode</button>
   </div>
 
-  <script>
-    /* ---------------------------------------------
-       GLOBALS & SETUP
-    --------------------------------------------- */
-    const COIN_GECKO_API = "https://api.coingecko.com/api/v3";
-    let selectedAsset = "bitcoin";
+  <div class="info-box">
+    <h2>Live Price</h2>
+    <p id="live-price">Loading...</p>
+  </div>
 
-    // Candlestick Chart instance (Chart.js)
-    let candlestickChart;
+  <div class="chart-container">
+    <canvas id="candlestickChart"></canvas>
+  </div>
+</div>
 
-    // Toggle Dark Mode
-    document.getElementById("toggle-theme").addEventListener("click", () => {
-      document.body.classList.toggle("dark-mode");
-    });
+<script>
+  /********************************************
+   * 1) MANUALLY REGISTER CANDLESTICK PLUGIN
+   ********************************************/
+  const {CandlestickController, CandlestickElement, OhlcController, OhlcElement} = ChartFinancial;
+  Chart.register(CandlestickController, CandlestickElement, OhlcController, OhlcElement);
 
-    // Coin selection
-    document.getElementById("coin-select").addEventListener("change", () => {
-      selectedAsset = document.getElementById("coin-select").value;
-      fetchDataAndRender();
-    });
+  /********************************************
+   * 2) GLOBALS
+   ********************************************/
+  const COIN_GECKO_API = "https://api.coingecko.com/api/v3";
+  let selectedAsset = "bitcoin";
+  let candlestickChart;
 
-    /* ---------------------------------------------
-       FETCH & RENDER
-    --------------------------------------------- */
-    async function fetchDataAndRender() {
-      // 1) Fetch live price
-      fetchLivePrice();
+  // Toggle Dark Mode
+  document.getElementById("toggle-theme").addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+  });
 
-      // 2) Fetch candlestick (OHLC) data
-      const ohlcData = await fetchOHLC();
-      if (ohlcData) {
-        renderCandlestickChart(ohlcData);
-      }
+  // Coin selection
+  document.getElementById("coin-select").addEventListener("change", () => {
+    selectedAsset = document.getElementById("coin-select").value;
+    fetchDataAndRender();
+  });
+
+  /********************************************
+   * 3) FETCH & RENDER
+   ********************************************/
+  async function fetchDataAndRender() {
+    await fetchLivePrice();
+    const ohlcData = await fetchOHLC();
+    if (ohlcData) {
+      renderCandlestickChart(ohlcData);
+    }
+  }
+
+  /********************************************
+   * 4) FETCH LIVE PRICE
+   ********************************************/
+  async function fetchLivePrice() {
+    try {
+      const url = `${COIN_GECKO_API}/simple/price?ids=${selectedAsset}&vs_currencies=usd`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      const price = data[selectedAsset].usd;
+      document.getElementById("live-price").innerText = `$${price.toLocaleString()}`;
+    } catch (err) {
+      console.error("Error fetching live price:", err);
+      document.getElementById("live-price").innerText = "Error loading price";
+    }
+  }
+
+  /********************************************
+   * 5) FETCH OHLC DATA (1 Day)
+   *    Returns arrays: [timestamp, open, high, low, close]
+   ********************************************/
+  async function fetchOHLC() {
+    try {
+      const url = `${COIN_GECKO_API}/coins/${selectedAsset}/ohlc?vs_currency=usd&days=1`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      // Convert to Chart.js format
+      const ohlc = data.map(candle => {
+        return {
+          x: candle[0],  // ms timestamp
+          o: candle[1],
+          h: candle[2],
+          l: candle[3],
+          c: candle[4]
+        };
+      });
+      return ohlc;
+    } catch (err) {
+      console.error("Error fetching OHLC data:", err);
+      return null;
+    }
+  }
+
+  /********************************************
+   * 6) RENDER CANDLESTICK CHART
+   ********************************************/
+  function renderCandlestickChart(ohlcData) {
+    // If chart exists, just update data
+    if (candlestickChart) {
+      candlestickChart.data.datasets[0].data = ohlcData;
+      candlestickChart.update();
+      return;
     }
 
-    /* ---------------------------------------------
-       LIVE PRICE (Ticker) from CoinGecko
-    --------------------------------------------- */
-    async function fetchLivePrice() {
-      try {
-        const url = `${COIN_GECKO_API}/simple/price?ids=${selectedAsset}&vs_currencies=usd`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-        const price = data[selectedAsset].usd;
-        document.getElementById("live-price").innerText = `$${price.toLocaleString()}`;
-      } catch (err) {
-        console.error("Error fetching live price:", err);
-        document.getElementById("live-price").innerText = "Error loading price";
-      }
-    }
-
-    /* ---------------------------------------------
-       FETCH OHLC (CANDLESTICK) DATA
-       CoinGecko returns [ [timestamp, open, high, low, close], ... ]
-       We'll request last 1 day of data => ~24 hours
-    --------------------------------------------- */
-    async function fetchOHLC() {
-      try {
-        // 'days=1' => last 24 hours of OHLC
-        const url = `${COIN_GECKO_API}/coins/${selectedAsset}/ohlc?vs_currency=usd&days=1`;
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        // Map to Chart.js financial format
-        // Chart.js wants {x: timestamp, o:..., h:..., l:..., c:...}
-        const ohlc = data.map(candle => {
-          return {
-            x: candle[0],  // timestamp in ms
-            o: candle[1],
-            h: candle[2],
-            l: candle[3],
-            c: candle[4]
-          };
-        });
-        return ohlc;
-      } catch (err) {
-        console.error("Error fetching OHLC data:", err);
-        return null;
-      }
-    }
-
-    /* ---------------------------------------------
-       RENDER CANDLESTICK CHART
-    --------------------------------------------- */
-    function renderCandlestickChart(ohlcData) {
-      // If chart already exists, just update the data
-      if (candlestickChart) {
-        candlestickChart.data.datasets[0].data = ohlcData;
-        candlestickChart.update();
-        return;
-      }
-
-      // Otherwise, create a new chart
-      const ctx = document.getElementById("candlestickChart").getContext("2d");
-      candlestickChart = new Chart(ctx, {
-        type: 'candlestick',
-        data: {
-          datasets: [
-            {
-              label: `${selectedAsset.toUpperCase()} Candlestick`,
-              data: ohlcData,
-              borderColor: 'rgba(0,0,0,1)',
-              borderWidth: 1
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          // We'll use a time scale on the X axis
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                // Chart.js automatically detects timestamps in ms
-                // We'll display as e.g. "Mar 25, 14:00"
-                tooltipFormat: 'MMM dd, HH:mm'
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Price (USD)'
-              },
-              beginAtZero: false
+    const ctx = document.getElementById("candlestickChart").getContext("2d");
+    candlestickChart = new Chart(ctx, {
+      type: 'candlestick',
+      data: {
+        datasets: [{
+          label: `${selectedAsset.toUpperCase()} (24h)`,
+          data: ohlcData,
+          borderColor: 'rgba(0,0,0,1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              tooltipFormat: 'MMM dd, HH:mm'
             }
           },
-          plugins: {
-            tooltip: {
-              mode: 'index',
-              intersect: false
-            }
+          y: {
+            title: {
+              display: true,
+              text: 'Price (USD)'
+            },
+            beginAtZero: false
           }
         }
-      });
-    }
+      }
+    });
+  }
 
-    /* ---------------------------------------------
-       AUTO-REFRESH (REAL-TIME DEMO)
-       Every 30 seconds, re-fetch live price & OHLC
-    --------------------------------------------- */
-    setInterval(fetchDataAndRender, 30000);
+  /********************************************
+   * 7) AUTO-REFRESH EVERY 30s
+   ********************************************/
+  setInterval(fetchDataAndRender, 30000);
 
-    // Initial load
-    fetchDataAndRender();
-  </script>
+  // Initial load
+  fetchDataAndRender();
+</script>
 </body>
 </html>
