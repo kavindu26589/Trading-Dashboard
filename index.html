@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>One-File Trading Dashboard</title>
+  <title>Trading Dashboard (Autoscaled Chart)</title>
   <!-- Load Chart.js & TensorFlow.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -12,7 +12,8 @@
       font-family: Arial, sans-serif;
       text-align: center;
       background-color: #f4f4f4;
-      margin: 0; padding: 0;
+      margin: 0; 
+      padding: 0;
     }
     .container {
       max-width: 600px;
@@ -43,9 +44,17 @@
     .dark-mode .prediction-box, .dark-mode .trading-box {
       background: #444;
     }
-    /* ---------- Basic Reset for Canvas ---------- */
+    /* ---------- Chart Container ---------- */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      max-width: 600px; /* control overall width */
+      margin: 0 auto;
+    }
     canvas {
-      max-width: 100%;
+      display: block;
+      width: 100%;    /* responsive width */
+      height: auto;   /* let Chart.js control the height via aspect ratio */
     }
   </style>
 </head>
@@ -68,7 +77,9 @@
     </div>
 
     <!-- Chart Container -->
-    <canvas id="priceChart" width="400" height="200"></canvas>
+    <div class="chart-container">
+      <canvas id="priceChart"></canvas>
+    </div>
 
     <div class="indicator-box">
       <h2>Indicators</h2>
@@ -93,7 +104,7 @@
     </div>
   </div>
 
-  <!-- Put the JS at the end of the body so the DOM is fully loaded first -->
+  <!-- JS at the end of body so DOM is loaded -->
   <script>
     /* -----------------------------------------------------
        GLOBAL VARIABLES
@@ -123,7 +134,8 @@
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,  // Keep the aspect ratio
+        aspectRatio: 2,            // 2 means width is 2x height
       },
     });
 
@@ -132,15 +144,13 @@
     ----------------------------------------------------- */
     function updateChart() {
       if (!priceHistory.length) return;
-      // x-axis labels: 1..n
       priceChart.data.labels = priceHistory.map((_, i) => i + 1);
-      // y-axis data: priceHistory
       priceChart.data.datasets[0].data = priceHistory;
       priceChart.update();
     }
 
     /* -----------------------------------------------------
-       FETCH HISTORICAL DATA FROM COINGECKO
+       FETCH HISTORICAL DATA (COINGECKO)
     ----------------------------------------------------- */
     async function fetchHistoricalData() {
       try {
@@ -149,15 +159,16 @@
         const response = await fetch(url);
         const data = await response.json();
 
-        // data.prices is an array of [timestamp, price]
+        // data.prices => [ [timestamp, price], [timestamp, price], ... ]
         priceHistory = data.prices.map(entry => entry[1]);
 
-        // Update the chart
+        // Update chart
         updateChart();
-        // Update indicators
+        // Calculate indicators
         calculateIndicators();
-        // Attempt a prediction
+        // Predict price (if model is trained)
         predictNextPrice();
+
         // Update "Live Price" with the last known price
         const lastPrice = priceHistory[priceHistory.length - 1];
         document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
@@ -168,7 +179,7 @@
     }
 
     /* -----------------------------------------------------
-       TECHNICAL INDICATORS
+       INDICATORS
     ----------------------------------------------------- */
     function calculateIndicators() {
       calculateRSI();
@@ -176,7 +187,6 @@
       calculateBollingerBands();
     }
 
-    // RSI
     function calculateRSI() {
       if (priceHistory.length < 15) {
         document.getElementById("rsi-value").innerText = "Insufficient Data";
@@ -195,19 +205,18 @@
       document.getElementById("rsi-value").innerText = rsi.toFixed(2);
     }
 
-    // MACD (very simplified approach)
     function calculateMACD() {
       if (priceHistory.length < 26) {
         document.getElementById("macd-value").innerText = "Insufficient Data";
         return;
       }
+      // Basic approach: 12-sample average, 26-sample average
       const shortEMA = average(priceHistory.slice(-12));
       const longEMA = average(priceHistory.slice(-26));
       const macd = shortEMA - longEMA;
       document.getElementById("macd-value").innerText = macd.toFixed(2);
     }
 
-    // Bollinger Bands
     function calculateBollingerBands() {
       if (priceHistory.length < 20) {
         document.getElementById("bollinger-value").innerText = "Insufficient Data";
@@ -229,14 +238,14 @@
     }
 
     /* -----------------------------------------------------
-       TENSORFLOW.JS - LSTM AI PREDICTION
+       TENSORFLOW.JS (LSTM PREDICTIONS)
     ----------------------------------------------------- */
     async function trainModel() {
       if (priceHistory.length < 10) {
         alert("Not enough data to train model!");
         return;
       }
-      // Build LSTM model
+      // Build a simple LSTM
       model = tf.sequential();
       model.add(tf.layers.lstm({
         units: 10,
@@ -246,7 +255,7 @@
       model.add(tf.layers.dense({ units: 1 }));
       model.compile({ optimizer: "adam", loss: "meanSquaredError" });
 
-      // Prepare training data: last 10 points -> first 5 (xs), next 5 (ys)
+      // Last 10 points => X: first 5, Y: next 5
       const xs = tf.tensor2d(priceHistory.slice(-10, -5), [5, 1]);
       const ys = tf.tensor2d(priceHistory.slice(-5), [5, 1]);
 
@@ -305,6 +314,7 @@
     document.getElementById("train-model").addEventListener("click", trainModel);
     document.getElementById("buy-btn").addEventListener("click", buyCrypto);
     document.getElementById("sell-btn").addEventListener("click", sellCrypto);
+
     document.getElementById("toggle-theme").addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
     });
