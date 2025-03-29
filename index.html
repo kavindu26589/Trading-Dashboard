@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading Dashboard (Autoscaled Chart)</title>
+  <title>Trading Dashboard - LSTM Fix</title>
   <!-- Load Chart.js & TensorFlow.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -166,7 +166,7 @@
         updateChart();
         // Calculate indicators
         calculateIndicators();
-        // Predict price (if model is trained)
+        // If we've already trained a model, try predicting
         predictNextPrice();
 
         // Update "Live Price" with the last known price
@@ -239,38 +239,46 @@
 
     /* -----------------------------------------------------
        TENSORFLOW.JS (LSTM PREDICTIONS)
+       - We train on the LAST 6 points: 5 for X, 1 for Y
+       - Then we predict 1 step ahead using the last 5 points
     ----------------------------------------------------- */
     async function trainModel() {
-      if (priceHistory.length < 10) {
+      if (priceHistory.length < 6) {
         alert("Not enough data to train model!");
         return;
       }
       // Build a simple LSTM
       model = tf.sequential();
-      model.add(tf.layers.lstm({
-        units: 10,
-        inputShape: [5, 1],
-        returnSequences: false,
-      }));
+      // inputShape: [timeSteps=5, features=1]
+      model.add(tf.layers.lstm({ units: 10, inputShape: [5, 1] }));
       model.add(tf.layers.dense({ units: 1 }));
       model.compile({ optimizer: "adam", loss: "meanSquaredError" });
 
-      // Last 10 points => X: first 5, Y: next 5
-      const xs = tf.tensor2d(priceHistory.slice(-10, -5), [5, 1]);
-      const ys = tf.tensor2d(priceHistory.slice(-5), [5, 1]);
+      // Last 6 points => X: first 5, Y: last 1
+      const xsArray = priceHistory.slice(-6, -1); // e.g. indexes [-6, -5, -4, -3, -2]
+      const ysArray = [ priceHistory[priceHistory.length - 1] ]; // the last point
+
+      // Reshape to 3D for LSTM: [batchSize=1, timeSteps=5, features=1]
+      const xs = tf.tensor3d([xsArray], [1, 5, 1]);
+      // Output is just 1 scalar: shape [1, 1]
+      const ys = tf.tensor2d([ysArray], [1, 1]);
 
       await model.fit(xs, ys, { epochs: 50 });
       predictNextPrice();
     }
 
     async function predictNextPrice() {
+      // We need at least 5 data points to do a single-step LSTM prediction
       if (!model || priceHistory.length < 5) return;
-      const input = tf.tensor2d([priceHistory.slice(-5)], [1, 5]);
-      const prediction = model.predict(input);
-      prediction.data().then((data) => {
-        const predictedValue = data[0].toFixed(2);
-        document.getElementById("predicted-price").innerText = `$${predictedValue}`;
-      });
+
+      // Last 5 points => shape [1, 5, 1]
+      const inputArray = priceHistory.slice(-5);
+      const inputTensor = tf.tensor3d([inputArray], [1, 5, 1]);
+
+      const prediction = model.predict(inputTensor);
+      const data = await prediction.data();
+      const predictedValue = data[0].toFixed(2);
+      document.getElementById("predicted-price").innerText = `$${predictedValue}`;
     }
 
     /* -----------------------------------------------------
