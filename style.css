@@ -77,7 +77,10 @@ canvas {
   border-color: #555;
 }
 
-.dark-mode h1, .dark-mode h2, .dark-mode p, .dark-mode label {
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode p,
+.dark-mode label {
   color: #fff;
 }
 
@@ -87,4 +90,3 @@ canvas {
   color: #fff;
   border-color: #666;
 }
-
