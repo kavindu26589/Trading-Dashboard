@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-  max-width: 900px;
+  max-width: 800px;
   margin: 20px auto;
   padding: 20px;
   background: #fff;
@@ -21,10 +21,12 @@ body {
 }
 
 h1 {
-  font-size: 1.8em;
   margin-bottom: 10px;
+  font-size: 2em;
+  color: #2c3e50;
 }
 
+/* Header Controls */
 .header {
   display: flex;
   flex-wrap: wrap;
@@ -36,25 +38,63 @@ h1 {
 .header select,
 .header button {
   padding: 8px 12px;
-  margin: 5px 0;
+  font-size: 1em;
+  margin: 5px;
   border: 1px solid #ccc;
   border-radius: 5px;
   background: #fff;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
-.info-box {
+.header button:hover,
+.header select:hover {
+  background: #e8e8e8;
+}
+
+/* Boxes */
+.box {
   padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 8px;
   background: #f7f7f7;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 20px;
 }
 
+.box h2 {
+  margin-top: 0;
+  color: #2c3e50;
+}
+
+/* Trading Signal Styling */
+.signal {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+  color: #fff;
+}
+
+.signal.buy {
+  background: #27ae60;
+}
+
+.signal.sell {
+  background: #c0392b;
+}
+
+.signal.hold {
+  background: #7f8c8d;
+}
+
+/* Chart Container */
 .chart-container {
+  position: relative;
+  margin: 0 auto 20px;
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 800px;
 }
 
 canvas {
@@ -62,31 +102,30 @@ canvas {
   height: auto !important;
 }
 
+/* Responsive */
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+  }
+}
+
 /* Dark Mode */
 .dark-mode {
-  background-color: #2f2f2f;
+  background: #222;
   color: #fff;
 }
 
 .dark-mode .container {
-  background: #3a3a3a;
-}
-
-.dark-mode .info-box {
-  background: #4a4a4a;
-  border-color: #555;
+  background: #333;
+  box-shadow: none;
 }
 
 .dark-mode h1,
-.dark-mode h2,
-.dark-mode p,
-.dark-mode label {
+.dark-mode h2 {
   color: #fff;
 }
 
-.dark-mode select,
-.dark-mode button {
-  background: #555;
-  color: #fff;
-  border-color: #666;
+.dark-mode .box {
+  background: #444;
+  border-color: #555;
 }
