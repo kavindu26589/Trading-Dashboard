@@ -2,141 +2,193 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading Dashboard - LSTM (Debug)</title>
-  <!-- Load Chart.js & TensorFlow.js from CDN -->
+  <title>Trading Dashboard – Signals Only</title>
+  <!-- Load Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
-    /* ---------- Basic Styling ---------- */
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #f4f4f4;
-      margin: 0; 
-      padding: 0;
+    /* ---------- Reset & Fonts ---------- */
+    * {
+      box-sizing: border-box;
     }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+    }
+    /* ---------- Container ---------- */
     .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: 20px auto;
       padding: 20px;
-      border-radius: 10px;
       background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-    h1, h2 {
-      color: #333;
-      margin-top: 0;
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2em;
+      color: #2c3e50;
     }
-    .info-box, .indicator-box, .prediction-box, .trading-box {
-      margin: 20px 0;
-      padding: 15px;
-      background: #e3e3e3;
+    /* ---------- Header & Controls ---------- */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .header select, .header button {
+      padding: 8px 12px;
+      font-size: 1em;
+      margin: 5px;
+      border: 1px solid #ccc;
       border-radius: 5px;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    /* ---------- Dark Mode ---------- */
-    .dark-mode {
-      background-color: #222;
+    .header button:hover, .header select:hover {
+      background: #e8e8e8;
+    }
+    /* ---------- Boxes ---------- */
+    .box {
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      background: #f7f7f7;
+      border: 1px solid #ddd;
+    }
+    .box h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+    .signal {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
       color: #fff;
     }
-    .dark-mode .container {
-      background-color: #333;
+    .signal.buy {
+      background: #27ae60;
     }
-    .dark-mode .info-box, .dark-mode .indicator-box,
-    .dark-mode .prediction-box, .dark-mode .trading-box {
-      background: #444;
+    .signal.sell {
+      background: #c0392b;
     }
-    /* ---------- Chart Container ---------- */
+    .signal.hold {
+      background: #7f8c8d;
+    }
+    /* ---------- Chart ---------- */
     .chart-container {
       position: relative;
+      margin: 0 auto 20px;
       width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
+      max-width: 800px;
     }
     canvas {
-      display: block;
-      width: 100%;
-      height: auto;
+      width: 100% !important;
+      height: auto !important;
+    }
+    /* ---------- Responsive ---------- */
+    @media (max-width: 600px) {
+      .header {
+        flex-direction: column;
+      }
     }
   </style>
 </head>
 <body>
-
   <div class="container">
-    <h1>Trading Dashboard (Debug LSTM)</h1>
-    <button id="toggle-theme">Toggle Dark Mode</button>
-
-    <label for="coin-select">Select Asset:</label>
-    <select id="coin-select">
-      <option value="bitcoin">Bitcoin (BTC)</option>
-      <option value="ethereum">Ethereum (ETH)</option>
-      <option value="dogecoin">Dogecoin (DOGE)</option>
-    </select>
-
-    <div class="info-box">
-      <h2>Live Price</h2>
-      <p id="live-price">Loading...</p>
+    <h1>Trading Dashboard</h1>
+    <div class="header">
+      <div>
+        <label for="coin-select">Select Asset:</label>
+        <select id="coin-select">
+          <option value="bitcoin">Bitcoin (BTC)</option>
+          <option value="ethereum">Ethereum (ETH)</option>
+          <option value="dogecoin">Dogecoin (DOGE)</option>
+        </select>
+      </div>
+      <button id="toggle-theme">Toggle Dark Mode</button>
     </div>
 
+    <!-- Live Price -->
+    <div class="box">
+      <h2>Live Price</h2>
+      <p id="live-price" style="font-size:1.5em;">Loading...</p>
+    </div>
+
+    <!-- Chart -->
     <div class="chart-container">
       <canvas id="priceChart"></canvas>
     </div>
 
-    <div class="indicator-box">
-      <h2>Indicators</h2>
+    <!-- Indicators -->
+    <div class="box">
+      <h2>Technical Indicators</h2>
       <p>RSI: <span id="rsi-value">Calculating...</span></p>
       <p>MACD: <span id="macd-value">Calculating...</span></p>
       <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
     </div>
 
-    <div class="prediction-box">
-      <h2>AI Predicted Price</h2>
-      <p id="predicted-price">Loading...</p>
-      <button id="train-model">Train LSTM Model</button>
+    <!-- Trading Signal -->
+    <div class="box">
+      <h2>Trading Signal</h2>
+      <div id="trading-signal" class="signal hold">Hold</div>
+      <p style="font-size:0.9em; color:#555;">
+        Signals based on RSI (<em>Buy if RSI&lt;30, Sell if RSI&gt;70</em>), MACD, and Bollinger Bands.
+      </p>
     </div>
 
-    <div class="trading-box">
+    <!-- Buy/Sell Simulation -->
+    <div class="box">
       <h2>Buy/Sell Simulation</h2>
       <p>Balance: $<span id="balance">10000</span></p>
       <input type="number" id="trade-amount" placeholder="Amount in USD" />
       <button id="buy-btn">Buy</button>
       <button id="sell-btn">Sell</button>
-      <p id="trade-status"></p>
+      <p id="trade-status" style="margin-top:10px;"></p>
     </div>
   </div>
 
   <script>
-    /* -----------------------------------------------------
-       GLOBALS
-    ----------------------------------------------------- */
+    /* -----------------------------
+       GLOBAL VARIABLES
+    ----------------------------- */
     const API_URL = "https://api.coingecko.com/api/v3/coins/";
     let selectedAsset = "bitcoin";
     let priceHistory = [];
     let balance = 10000;
-    let model;
 
-    /* -----------------------------------------------------
+    /* -----------------------------
        SET UP CHART.JS
-    ----------------------------------------------------- */
+    ----------------------------- */
     const ctx = document.getElementById("priceChart").getContext("2d");
     const priceChart = new Chart(ctx, {
       type: "line",
       data: {
         labels: [],
-        datasets: [
-          {
-            label: "Price",
-            data: [],
-            borderColor: "blue",
-            borderWidth: 1,
-          },
-        ],
+        datasets: [{
+          label: "Price",
+          data: [],
+          borderColor: "blue",
+          borderWidth: 1,
+          fill: false,
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
         aspectRatio: 2,
-      },
+      }
     });
 
+    /* -----------------------------
+       UPDATE THE CHART
+    ----------------------------- */
     function updateChart() {
       if (!priceHistory.length) return;
       priceChart.data.labels = priceHistory.map((_, i) => i + 1);
@@ -144,33 +196,34 @@
       priceChart.update();
     }
 
-    /* -----------------------------------------------------
+    /* -----------------------------
        FETCH DATA FROM COINGECKO
-    ----------------------------------------------------- */
+    ----------------------------- */
     async function fetchHistoricalData() {
       try {
+        // Fetch 30 days of daily data
         const url = `${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`;
         const response = await fetch(url);
         const data = await response.json();
-
-        // Extract the second item in each [timestamp, price] pair
         priceHistory = data.prices.map(entry => entry[1]);
 
+        // Update chart & live price
         updateChart();
-        calculateIndicators();
-        predictNextPrice();
-
         const lastPrice = priceHistory[priceHistory.length - 1];
         document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
+
+        // Calculate indicators & trading signal
+        calculateIndicators();
+        calculateTradingSignal();
       } catch (error) {
         console.error("Error fetching data:", error);
         document.getElementById("live-price").innerText = "Error loading price";
       }
     }
 
-    /* -----------------------------------------------------
+    /* -----------------------------
        INDICATORS
-    ----------------------------------------------------- */
+    ----------------------------- */
     function calculateIndicators() {
       calculateRSI();
       calculateMACD();
@@ -185,13 +238,15 @@
       let gains = [], losses = [];
       for (let i = 1; i < priceHistory.length; i++) {
         const diff = priceHistory[i] - priceHistory[i - 1];
-        diff > 0 ? gains.push(diff) : losses.push(Math.abs(diff));
+        if (diff > 0) gains.push(diff);
+        else losses.push(Math.abs(diff));
       }
       const avgGain = gains.reduce((a, b) => a + b, 0) / gains.length;
       const avgLoss = losses.reduce((a, b) => a + b, 0) / losses.length;
       const rs = avgGain / avgLoss;
-      const rsi = 100 - 100 / (1 + rs);
+      const rsi = 100 - (100 / (1 + rs));
       document.getElementById("rsi-value").innerText = rsi.toFixed(2);
+      return rsi;
     }
 
     function calculateMACD() {
@@ -203,6 +258,7 @@
       const longEMA = average(priceHistory.slice(-26));
       const macd = shortEMA - longEMA;
       document.getElementById("macd-value").innerText = macd.toFixed(2);
+      return macd;
     }
 
     function calculateBollingerBands() {
@@ -213,71 +269,68 @@
       const last20 = priceHistory.slice(-20);
       const sma = average(last20);
       const squaredDiffs = last20.map(p => Math.pow(p - sma, 2));
-      const variance = squaredDiffs.reduce((a, b) => a + b, 0) / last20.length;
-      const stdDev = Math.sqrt(variance);
+      const stdDev = Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / last20.length);
       const upperBand = sma + 2 * stdDev;
       const lowerBand = sma - 2 * stdDev;
       document.getElementById("bollinger-value").innerText =
         `Upper: $${upperBand.toFixed(2)}, Lower: $${lowerBand.toFixed(2)}`;
+      return { upperBand, lowerBand, sma };
     }
 
     function average(arr) {
       return arr.reduce((a, b) => a + b, 0) / arr.length;
     }
 
-    /* -----------------------------------------------------
-       LSTM TRAIN/ PREDICT (TFJS)
-       Key fix: data must be 3D => [batchSize, timeSteps, features]
-    ----------------------------------------------------- */
-    async function trainModel() {
-      if (priceHistory.length < 6) {
-        alert("Not enough data to train model!");
-        return;
-      }
-    
-      // Build a simple LSTM model
-      model = tf.sequential();
-      // LSTM expects input shape: [timeSteps, features]. Here, timeSteps = 5 and features = 1.
-      model.add(tf.layers.lstm({ units: 10, inputShape: [5, 1] }));
-      model.add(tf.layers.dense({ units: 1 }));
-      model.compile({ optimizer: "adam", loss: "meanSquaredError" });
-    
-      // Get the last 6 data points: first 5 as input and the 6th as the label.
-      const xsArray = priceHistory.slice(-6, -1).map(Number); // Ensure all values are numbers
-      const ysArray = [ Number(priceHistory[priceHistory.length - 1]) ]; // Single target value
-    
-      // Log for debugging
-      console.log("DEBUG: xsArray =>", xsArray);
-      console.log("DEBUG: ysArray =>", ysArray);
-    
-      // Reshape for LSTM: [batchSize=1, timeSteps=5, features=1]
-      const xs = tf.tensor3d([xsArray], [1, xsArray.length, 1]);
-      // Output tensor shape: [1, 1]
-      const ys = tf.tensor2d([ysArray], [1, 1]);
-    
-      console.log("DEBUG: xs shape =>", xs.shape);
-      console.log("DEBUG: xs data =>", xs.arraySync());
-      console.log("DEBUG: ys data =>", ys.arraySync());
-    
-      await model.fit(xs, ys, { epochs: 50 });
-      predictNextPrice();
-    }
-    
-    async function predictNextPrice() {
-      if (!model || priceHistory.length < 5) return;
-    
-      // Use the last 5 data points as input. Ensure they are numbers.
-      const inputArray = priceHistory.slice(-5).map(Number);
-      const inputTensor = tf.tensor3d([inputArray], [1, inputArray.length, 1]);
-      const prediction = model.predict(inputTensor);
-      const data = await prediction.data();
-      const predictedValue = data[0].toFixed(2);
-      document.getElementById("predicted-price").innerText = `$${predictedValue}`;
+    /* -----------------------------
+       TRADING SIGNALS
+       Uses simple thresholds:
+         - RSI: Buy if <30, Sell if >70, else Hold
+         - MACD: Buy if positive, Sell if negative
+         - Bollinger: Buy if current price near lower band, Sell if near upper band
+         Final signal by majority vote (2 or more indicators)
+    ----------------------------- */
+    function calculateTradingSignal() {
+      const rsi = calculateRSI();
+      const macd = calculateMACD();
+      const bb = calculateBollingerBands();
+      const currentPrice = priceHistory[priceHistory.length - 1];
+
+      let rsiSignal = "Hold";
+      if (rsi < 30) rsiSignal = "Buy";
+      else if (rsi > 70) rsiSignal = "Sell";
+
+      let macdSignal = "Hold";
+      if (macd > 0) macdSignal = "Buy";
+      else if (macd < 0) macdSignal = "Sell";
+
+      let bbSignal = "Hold";
+      // If current price is within 1% of lower band, signal Buy
+      if (currentPrice <= bb.lowerBand * 1.01) bbSignal = "Buy";
+      // If current price is within 1% of upper band, signal Sell
+      else if (currentPrice >= bb.upperBand * 0.99) bbSignal = "Sell";
+
+      // Final signal via majority vote
+      let buyCount = 0, sellCount = 0;
+      [rsiSignal, macdSignal, bbSignal].forEach(signal => {
+        if (signal === "Buy") buyCount++;
+        if (signal === "Sell") sellCount++;
+      });
+      let finalSignal = "Hold";
+      if (buyCount >= 2) finalSignal = "Buy";
+      else if (sellCount >= 2) finalSignal = "Sell";
+
+      // Update UI for signal with appropriate color
+      const signalDiv = document.getElementById("trading-signal");
+      signalDiv.innerText = finalSignal;
+      signalDiv.classList.remove("buy", "sell", "hold");
+      if (finalSignal === "Buy") signalDiv.classList.add("buy");
+      else if (finalSignal === "Sell") signalDiv.classList.add("sell");
+      else signalDiv.classList.add("hold");
     }
 
-    /* -----------------------------------------------------
+    /* -----------------------------
        BUY/SELL SIMULATION
-    ----------------------------------------------------- */
+    ----------------------------- */
     function buyCrypto() {
       const amount = parseFloat(document.getElementById("trade-amount").value);
       if (isNaN(amount) || amount <= 0) {
@@ -306,24 +359,22 @@
         `Sold $${amount} worth of ${selectedAsset}`;
     }
 
-    /* -----------------------------------------------------
+    /* -----------------------------
        EVENT LISTENERS
-    ----------------------------------------------------- */
+    ----------------------------- */
     document.getElementById("coin-select").addEventListener("change", () => {
       selectedAsset = document.getElementById("coin-select").value;
       fetchHistoricalData();
     });
-    document.getElementById("train-model").addEventListener("click", trainModel);
     document.getElementById("buy-btn").addEventListener("click", buyCrypto);
     document.getElementById("sell-btn").addEventListener("click", sellCrypto);
-
     document.getElementById("toggle-theme").addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
     });
 
-    /* -----------------------------------------------------
-       INIT
-    ----------------------------------------------------- */
+    /* -----------------------------
+       INITIALIZE
+    ----------------------------- */
     fetchHistoricalData();
   </script>
 </body>
