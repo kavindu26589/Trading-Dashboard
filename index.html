@@ -2,60 +2,317 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trading Dashboard</title>
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css">
-
-  <!-- Chart.js & TensorFlow.js -->
+  <title>One-File Trading Dashboard</title>
+  <!-- Load Chart.js & TensorFlow.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <style>
+    /* ---------- Basic Styling ---------- */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      margin: 0; padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      background: #fff;
+    }
+    h1, h2 {
+      color: #333;
+      margin-top: 0;
+    }
+    .info-box, .indicator-box, .prediction-box, .trading-box {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e3e3e3;
+      border-radius: 5px;
+    }
+    /* ---------- Dark Mode ---------- */
+    .dark-mode {
+      background-color: #222;
+      color: #fff;
+    }
+    .dark-mode .container {
+      background-color: #333;
+    }
+    .dark-mode .info-box, .dark-mode .indicator-box,
+    .dark-mode .prediction-box, .dark-mode .trading-box {
+      background: #444;
+    }
+    /* ---------- Basic Reset for Canvas ---------- */
+    canvas {
+      max-width: 100%;
+    }
+  </style>
 </head>
 <body>
+
   <div class="container">
-      <h1>Trading Dashboard</h1>
-      <button id="toggle-theme">Toggle Dark Mode</button>
+    <h1>Trading Dashboard</h1>
+    <button id="toggle-theme">Toggle Dark Mode</button>
 
-      <label for="coin-select">Select Asset:</label>
-      <select id="coin-select">
-          <option value="bitcoin">Bitcoin (BTC)</option>
-          <option value="ethereum">Ethereum (ETH)</option>
-          <option value="dogecoin">Dogecoin (DOGE)</option>
-      </select>
+    <label for="coin-select">Select Asset:</label>
+    <select id="coin-select">
+      <option value="bitcoin">Bitcoin (BTC)</option>
+      <option value="ethereum">Ethereum (ETH)</option>
+      <option value="dogecoin">Dogecoin (DOGE)</option>
+    </select>
 
-      <div class="info-box">
-          <h2>Live Price</h2>
-          <p id="live-price">Loading...</p>
-      </div>
+    <div class="info-box">
+      <h2>Live Price</h2>
+      <p id="live-price">Loading...</p>
+    </div>
 
-      <canvas id="priceChart"></canvas>
+    <!-- Chart Container -->
+    <canvas id="priceChart" width="400" height="200"></canvas>
 
-      <div class="indicator-box">
-          <h2>Indicators</h2>
-          <p>RSI: <span id="rsi-value">Calculating...</span></p>
-          <p>MACD: <span id="macd-value">Calculating...</span></p>
-          <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
-      </div>
+    <div class="indicator-box">
+      <h2>Indicators</h2>
+      <p>RSI: <span id="rsi-value">Calculating...</span></p>
+      <p>MACD: <span id="macd-value">Calculating...</span></p>
+      <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
+    </div>
 
-      <div class="prediction-box">
-          <h2>AI Predicted Price</h2>
-          <p id="predicted-price">Loading...</p>
-          <button id="train-model">Train LSTM Model</button>
-      </div>
+    <div class="prediction-box">
+      <h2>AI Predicted Price</h2>
+      <p id="predicted-price">Loading...</p>
+      <button id="train-model">Train LSTM Model</button>
+    </div>
 
-      <div class="trading-box">
-          <h2>Buy/Sell Simulation</h2>
-          <p>Balance: $<span id="balance">10000</span></p>
-          <input type="number" id="trade-amount" placeholder="Amount in USD" />
-          <button onclick="buyCrypto()">Buy</button>
-          <button onclick="sellCrypto()">Sell</button>
-      </div>
-
+    <div class="trading-box">
+      <h2>Buy/Sell Simulation</h2>
+      <p>Balance: $<span id="balance">10000</span></p>
+      <input type="number" id="trade-amount" placeholder="Amount in USD" />
+      <button id="buy-btn">Buy</button>
+      <button id="sell-btn">Sell</button>
       <p id="trade-status"></p>
+    </div>
   </div>
 
-  <!-- IMPORTANT: Load script.js at the END of the body -->
-  <script src="script.js"></script>
+  <!-- Put the JS at the end of the body so the DOM is fully loaded first -->
+  <script>
+    /* -----------------------------------------------------
+       GLOBAL VARIABLES
+    ----------------------------------------------------- */
+    const API_URL = "https://api.coingecko.com/api/v3/coins/";
+    let selectedAsset = "bitcoin";
+    let priceHistory = [];
+    let balance = 10000;
+    let model; // For TensorFlow.js
+
+    /* -----------------------------------------------------
+       SET UP CHART.JS
+    ----------------------------------------------------- */
+    const ctx = document.getElementById("priceChart").getContext("2d");
+    const priceChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "Price",
+            data: [],
+            borderColor: "blue",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+      },
+    });
+
+    /* -----------------------------------------------------
+       UPDATE THE CHART
+    ----------------------------------------------------- */
+    function updateChart() {
+      if (!priceHistory.length) return;
+      // x-axis labels: 1..n
+      priceChart.data.labels = priceHistory.map((_, i) => i + 1);
+      // y-axis data: priceHistory
+      priceChart.data.datasets[0].data = priceHistory;
+      priceChart.update();
+    }
+
+    /* -----------------------------------------------------
+       FETCH HISTORICAL DATA FROM COINGECKO
+    ----------------------------------------------------- */
+    async function fetchHistoricalData() {
+      try {
+        // 30 days of daily data
+        const url = `${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // data.prices is an array of [timestamp, price]
+        priceHistory = data.prices.map(entry => entry[1]);
+
+        // Update the chart
+        updateChart();
+        // Update indicators
+        calculateIndicators();
+        // Attempt a prediction
+        predictNextPrice();
+        // Update "Live Price" with the last known price
+        const lastPrice = priceHistory[priceHistory.length - 1];
+        document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        document.getElementById("live-price").innerText = "Error loading price";
+      }
+    }
+
+    /* -----------------------------------------------------
+       TECHNICAL INDICATORS
+    ----------------------------------------------------- */
+    function calculateIndicators() {
+      calculateRSI();
+      calculateMACD();
+      calculateBollingerBands();
+    }
+
+    // RSI
+    function calculateRSI() {
+      if (priceHistory.length < 15) {
+        document.getElementById("rsi-value").innerText = "Insufficient Data";
+        return;
+      }
+      let gains = [], losses = [];
+      for (let i = 1; i < priceHistory.length; i++) {
+        const diff = priceHistory[i] - priceHistory[i - 1];
+        if (diff > 0) gains.push(diff);
+        else losses.push(Math.abs(diff));
+      }
+      const avgGain = gains.reduce((a, b) => a + b, 0) / gains.length;
+      const avgLoss = losses.reduce((a, b) => a + b, 0) / losses.length;
+      const rs = avgGain / avgLoss;
+      const rsi = 100 - 100 / (1 + rs);
+      document.getElementById("rsi-value").innerText = rsi.toFixed(2);
+    }
+
+    // MACD (very simplified approach)
+    function calculateMACD() {
+      if (priceHistory.length < 26) {
+        document.getElementById("macd-value").innerText = "Insufficient Data";
+        return;
+      }
+      const shortEMA = average(priceHistory.slice(-12));
+      const longEMA = average(priceHistory.slice(-26));
+      const macd = shortEMA - longEMA;
+      document.getElementById("macd-value").innerText = macd.toFixed(2);
+    }
+
+    // Bollinger Bands
+    function calculateBollingerBands() {
+      if (priceHistory.length < 20) {
+        document.getElementById("bollinger-value").innerText = "Insufficient Data";
+        return;
+      }
+      const last20 = priceHistory.slice(-20);
+      const sma = average(last20);
+      const squaredDiffs = last20.map(p => Math.pow(p - sma, 2));
+      const variance = squaredDiffs.reduce((a, b) => a + b, 0) / last20.length;
+      const stdDev = Math.sqrt(variance);
+      const upperBand = sma + 2 * stdDev;
+      const lowerBand = sma - 2 * stdDev;
+      document.getElementById("bollinger-value").innerText =
+        `Upper: $${upperBand.toFixed(2)}, Lower: $${lowerBand.toFixed(2)}`;
+    }
+
+    function average(arr) {
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    /* -----------------------------------------------------
+       TENSORFLOW.JS - LSTM AI PREDICTION
+    ----------------------------------------------------- */
+    async function trainModel() {
+      if (priceHistory.length < 10) {
+        alert("Not enough data to train model!");
+        return;
+      }
+      // Build LSTM model
+      model = tf.sequential();
+      model.add(tf.layers.lstm({
+        units: 10,
+        inputShape: [5, 1],
+        returnSequences: false,
+      }));
+      model.add(tf.layers.dense({ units: 1 }));
+      model.compile({ optimizer: "adam", loss: "meanSquaredError" });
+
+      // Prepare training data: last 10 points -> first 5 (xs), next 5 (ys)
+      const xs = tf.tensor2d(priceHistory.slice(-10, -5), [5, 1]);
+      const ys = tf.tensor2d(priceHistory.slice(-5), [5, 1]);
+
+      await model.fit(xs, ys, { epochs: 50 });
+      predictNextPrice();
+    }
+
+    async function predictNextPrice() {
+      if (!model || priceHistory.length < 5) return;
+      const input = tf.tensor2d([priceHistory.slice(-5)], [1, 5]);
+      const prediction = model.predict(input);
+      prediction.data().then((data) => {
+        const predictedValue = data[0].toFixed(2);
+        document.getElementById("predicted-price").innerText = `$${predictedValue}`;
+      });
+    }
+
+    /* -----------------------------------------------------
+       BUY/SELL SIMULATION
+    ----------------------------------------------------- */
+    function buyCrypto() {
+      const amount = parseFloat(document.getElementById("trade-amount").value);
+      if (isNaN(amount) || amount <= 0) {
+        document.getElementById("trade-status").innerText = "Enter a valid amount!";
+        return;
+      }
+      if (amount > balance) {
+        document.getElementById("trade-status").innerText = "Not enough balance!";
+        return;
+      }
+      balance -= amount;
+      document.getElementById("balance").innerText = balance.toFixed(2);
+      document.getElementById("trade-status").innerText =
+        `Bought $${amount} worth of ${selectedAsset}`;
+    }
+
+    function sellCrypto() {
+      const amount = parseFloat(document.getElementById("trade-amount").value);
+      if (isNaN(amount) || amount <= 0) {
+        document.getElementById("trade-status").innerText = "Enter a valid amount!";
+        return;
+      }
+      balance += amount;
+      document.getElementById("balance").innerText = balance.toFixed(2);
+      document.getElementById("trade-status").innerText =
+        `Sold $${amount} worth of ${selectedAsset}`;
+    }
+
+    /* -----------------------------------------------------
+       EVENT LISTENERS
+    ----------------------------------------------------- */
+    document.getElementById("coin-select").addEventListener("change", () => {
+      selectedAsset = document.getElementById("coin-select").value;
+      fetchHistoricalData();
+    });
+    document.getElementById("train-model").addEventListener("click", trainModel);
+    document.getElementById("buy-btn").addEventListener("click", buyCrypto);
+    document.getElementById("sell-btn").addEventListener("click", sellCrypto);
+    document.getElementById("toggle-theme").addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode");
+    });
+
+    /* -----------------------------------------------------
+       INITIALIZE: FETCH DATA
+    ----------------------------------------------------- */
+    fetchHistoricalData();
+  </script>
 </body>
 </html>
