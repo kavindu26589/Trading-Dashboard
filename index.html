@@ -2,29 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading Dashboard – Signals & Trading Types</title>
-  <!-- Load Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Candlestick Chart – Real-Time Demo</title>
+
+  <!-- Chart.js & Financial Plugin (CDN) -->
+  <!-- Make sure the versions match (Chart.js v4 + chartjs-chart-financial@3) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0"></script>
+
   <style>
-    /* ---------- Reset & Fonts ---------- */
-    * { box-sizing: border-box; }
+    /* Basic Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0; padding: 0;
+    }
     body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: Arial, sans-serif;
       background: #f0f2f5;
       color: #333;
     }
-    /* ---------- Container ---------- */
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 20px auto;
       padding: 20px;
       background: #fff;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    h1 { margin-bottom: 10px; font-size: 2em; color: #2c3e50; }
-    /* ---------- Header & Controls ---------- */
+    h1 {
+      margin-bottom: 10px;
+      font-size: 2em;
+      color: #2c3e50;
+    }
     .header {
       display: flex;
       flex-wrap: wrap;
@@ -35,52 +44,69 @@
     .header select, .header button {
       padding: 8px 12px;
       font-size: 1em;
-      margin: 5px;
+      margin: 5px 0;
       border: 1px solid #ccc;
       border-radius: 5px;
       background: #fff;
       cursor: pointer;
       transition: background 0.2s;
     }
-    .header button:hover, .header select:hover { background: #e8e8e8; }
-    /* ---------- Boxes ---------- */
-    .box {
+    .header button:hover, .header select:hover {
+      background: #e8e8e8;
+    }
+    .info-box {
+      margin-bottom: 20px;
       padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 8px;
       background: #f7f7f7;
       border: 1px solid #ddd;
+      border-radius: 8px;
     }
-    .box h2 { margin-top: 0; color: #2c3e50; }
-    .signal {
-      font-size: 1.5em;
-      font-weight: bold;
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 5px;
-      text-align: center;
+    .info-box h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+    .info-box p {
+      font-size: 1.2em;
+      margin: 5px 0;
+    }
+    .chart-container {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+
+    /* Dark Mode */
+    .dark-mode {
+      background-color: #2f2f2f;
       color: #fff;
     }
-    .signal.buy { background: #27ae60; }
-    .signal.sell { background: #c0392b; }
-    .signal.hold { background: #7f8c8d; }
-    /* ---------- Chart ---------- */
-    .chart-container {
-      position: relative;
-      margin: 0 auto 20px;
-      width: 100%;
-      max-width: 800px;
+    .dark-mode .container {
+      background: #3a3a3a;
     }
-    canvas { width: 100% !important; height: auto !important; }
-    /* ---------- Responsive ---------- */
-    @media (max-width: 600px) {
-      .header { flex-direction: column; }
+    .dark-mode .info-box {
+      background: #4a4a4a;
+      border-color: #555;
+    }
+    .dark-mode h1, .dark-mode h2, .dark-mode p {
+      color: #fff;
+    }
+    .dark-mode select, .dark-mode button {
+      background: #555;
+      color: #fff;
+      border-color: #666;
+    }
+    .dark-mode select:hover, .dark-mode button:hover {
+      background: #666;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Trading Dashboard</h1>
+    <h1>Real-Time Candlestick Chart</h1>
     <div class="header">
       <div>
         <label for="coin-select">Select Asset:</label>
@@ -90,282 +116,164 @@
           <option value="dogecoin">Dogecoin (DOGE)</option>
         </select>
       </div>
-      <div>
-        <label for="trading-type">Trading Type:</label>
-        <select id="trading-type">
-          <option value="Swing Trading" selected>Swing Trading</option>
-          <option value="Day Trading">Day Trading</option>
-        </select>
-      </div>
       <button id="toggle-theme">Toggle Dark Mode</button>
     </div>
 
-    <!-- Live Price -->
-    <div class="box">
+    <div class="info-box">
       <h2>Live Price</h2>
-      <p id="live-price" style="font-size:1.5em;">Loading...</p>
+      <p id="live-price">Loading...</p>
     </div>
 
-    <!-- Chart -->
     <div class="chart-container">
-      <canvas id="priceChart"></canvas>
-    </div>
-
-    <!-- Indicators -->
-    <div class="box">
-      <h2>Technical Indicators</h2>
-      <p>RSI: <span id="rsi-value">Calculating...</span></p>
-      <p>MACD: <span id="macd-value">Calculating...</span></p>
-      <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
-    </div>
-
-    <!-- Trading Signal -->
-    <div class="box">
-      <h2>Trading Signal</h2>
-      <div id="trading-signal" class="signal hold">Hold</div>
-      <p style="font-size:0.9em; color:#555;">
-        Signals based on indicators. For Day Trading: RSI (Buy if &lt;40, Sell if &gt;60). For Swing Trading: RSI (Buy if &lt;30, Sell if &gt;70).
-      </p>
-    </div>
-
-    <!-- Buy/Sell Simulation -->
-    <div class="box">
-      <h2>Buy/Sell Simulation</h2>
-      <p>Balance: $<span id="balance">10000</span></p>
-      <input type="number" id="trade-amount" placeholder="Amount in USD" />
-      <button id="buy-btn">Buy</button>
-      <button id="sell-btn">Sell</button>
-      <p id="trade-status" style="margin-top:10px;"></p>
+      <canvas id="candlestickChart"></canvas>
     </div>
   </div>
 
   <script>
-    /* -----------------------------
-       GLOBAL VARIABLES
-    ----------------------------- */
-    const API_URL = "https://api.coingecko.com/api/v3/coins/";
+    /* ---------------------------------------------
+       GLOBALS & SETUP
+    --------------------------------------------- */
+    const COIN_GECKO_API = "https://api.coingecko.com/api/v3";
     let selectedAsset = "bitcoin";
-    let priceHistory = [];
-    let balance = 10000;
 
-    /* -----------------------------
-       SET UP CHART.JS
-    ----------------------------- */
-    const ctx = document.getElementById("priceChart").getContext("2d");
-    const priceChart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: [],
-        datasets: [{
-          label: "Price",
-          data: [],
-          borderColor: "blue",
-          borderWidth: 1,
-          fill: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2,
-      }
-    });
+    // Candlestick Chart instance (Chart.js)
+    let candlestickChart;
 
-    /* -----------------------------
-       UPDATE THE CHART
-    ----------------------------- */
-    function updateChart() {
-      if (!priceHistory.length) return;
-      priceChart.data.labels = priceHistory.map((_, i) => i + 1);
-      priceChart.data.datasets[0].data = priceHistory;
-      priceChart.update();
-    }
-
-    /* -----------------------------
-       FETCH DATA FROM COINGECKO
-    ----------------------------- */
-    async function fetchHistoricalData() {
-      try {
-        const url = `${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`;
-        const response = await fetch(url);
-        const data = await response.json();
-        priceHistory = data.prices.map(entry => entry[1]);
-
-        updateChart();
-        const lastPrice = priceHistory[priceHistory.length - 1];
-        document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
-
-        calculateIndicators();
-        calculateTradingSignal();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        document.getElementById("live-price").innerText = "Error loading price";
-      }
-    }
-
-    /* -----------------------------
-       INDICATORS
-    ----------------------------- */
-    function calculateIndicators() {
-      calculateRSI();
-      calculateMACD();
-      calculateBollingerBands();
-    }
-
-    function calculateRSI() {
-      if (priceHistory.length < 15) {
-        document.getElementById("rsi-value").innerText = "Insufficient Data";
-        return;
-      }
-      let gains = [], losses = [];
-      for (let i = 1; i < priceHistory.length; i++) {
-        const diff = priceHistory[i] - priceHistory[i - 1];
-        diff > 0 ? gains.push(diff) : losses.push(Math.abs(diff));
-      }
-      const avgGain = gains.reduce((a, b) => a + b, 0) / gains.length;
-      const avgLoss = losses.reduce((a, b) => a + b, 0) / losses.length;
-      const rs = avgGain / avgLoss;
-      const rsi = 100 - (100 / (1 + rs));
-      document.getElementById("rsi-value").innerText = rsi.toFixed(2);
-      return rsi;
-    }
-
-    function calculateMACD() {
-      if (priceHistory.length < 26) {
-        document.getElementById("macd-value").innerText = "Insufficient Data";
-        return;
-      }
-      const shortEMA = average(priceHistory.slice(-12));
-      const longEMA = average(priceHistory.slice(-26));
-      const macd = shortEMA - longEMA;
-      document.getElementById("macd-value").innerText = macd.toFixed(2);
-      return macd;
-    }
-
-    function calculateBollingerBands() {
-      if (priceHistory.length < 20) {
-        document.getElementById("bollinger-value").innerText = "Insufficient Data";
-        return;
-      }
-      const last20 = priceHistory.slice(-20);
-      const sma = average(last20);
-      const squaredDiffs = last20.map(p => Math.pow(p - sma, 2));
-      const stdDev = Math.sqrt(squaredDiffs.reduce((a, b) => a + b, 0) / last20.length);
-      const upperBand = sma + 2 * stdDev;
-      const lowerBand = sma - 2 * stdDev;
-      document.getElementById("bollinger-value").innerText =
-        `Upper: $${upperBand.toFixed(2)}, Lower: $${lowerBand.toFixed(2)}`;
-      return { upperBand, lowerBand, sma };
-    }
-
-    function average(arr) {
-      return arr.reduce((a, b) => a + b, 0) / arr.length;
-    }
-
-    /* -----------------------------
-       TRADING SIGNAL (Adjusted by Trading Type)
-    ----------------------------- */
-    function calculateTradingSignal() {
-      const rsi = calculateRSI();
-      const macd = calculateMACD();
-      const bb = calculateBollingerBands();
-      const currentPrice = priceHistory[priceHistory.length - 1];
-      
-      // Get the selected trading type
-      const tradingType = document.getElementById("trading-type").value;
-      
-      let rsiSignal = "Hold";
-      if (tradingType === "Day Trading") {
-        // For Day Trading, use RSI < 40 to buy, > 60 to sell
-        if (rsi < 40) rsiSignal = "Buy";
-        else if (rsi > 60) rsiSignal = "Sell";
-      } else {
-        // For Swing Trading, use RSI < 30 to buy, > 70 to sell
-        if (rsi < 30) rsiSignal = "Buy";
-        else if (rsi > 70) rsiSignal = "Sell";
-      }
-
-      let macdSignal = "Hold";
-      // Simplistic: if MACD > 0 then Buy, < 0 then Sell
-      if (macd > 0) macdSignal = "Buy";
-      else if (macd < 0) macdSignal = "Sell";
-
-      let bbSignal = "Hold";
-      // For Bollinger Bands, use a 1% buffer for Swing Trading, 1.5% for Day Trading
-      const buffer = (tradingType === "Day Trading") ? 1.015 : 1.01;
-      if (currentPrice <= bb.lowerBand * buffer) bbSignal = "Buy";
-      else if (currentPrice >= bb.upperBand / buffer) bbSignal = "Sell";
-
-      // Majority vote among the three signals
-      let buyCount = 0, sellCount = 0;
-      [rsiSignal, macdSignal, bbSignal].forEach(signal => {
-        if (signal === "Buy") buyCount++;
-        if (signal === "Sell") sellCount++;
-      });
-      let finalSignal = "Hold";
-      if (buyCount >= 2) finalSignal = "Buy";
-      else if (sellCount >= 2) finalSignal = "Sell";
-
-      const signalDiv = document.getElementById("trading-signal");
-      signalDiv.innerText = finalSignal;
-      signalDiv.classList.remove("buy", "sell", "hold");
-      if (finalSignal === "Buy") signalDiv.classList.add("buy");
-      else if (finalSignal === "Sell") signalDiv.classList.add("sell");
-      else signalDiv.classList.add("hold");
-    }
-
-    /* -----------------------------
-       BUY/SELL SIMULATION
-    ----------------------------- */
-    function buyCrypto() {
-      const amount = parseFloat(document.getElementById("trade-amount").value);
-      if (isNaN(amount) || amount <= 0) {
-        document.getElementById("trade-status").innerText = "Enter a valid amount!";
-        return;
-      }
-      if (amount > balance) {
-        document.getElementById("trade-status").innerText = "Not enough balance!";
-        return;
-      }
-      balance -= amount;
-      document.getElementById("balance").innerText = balance.toFixed(2);
-      document.getElementById("trade-status").innerText =
-        `Bought $${amount} worth of ${selectedAsset}`;
-    }
-
-    function sellCrypto() {
-      const amount = parseFloat(document.getElementById("trade-amount").value);
-      if (isNaN(amount) || amount <= 0) {
-        document.getElementById("trade-status").innerText = "Enter a valid amount!";
-        return;
-      }
-      balance += amount;
-      document.getElementById("balance").innerText = balance.toFixed(2);
-      document.getElementById("trade-status").innerText =
-        `Sold $${amount} worth of ${selectedAsset}`;
-    }
-
-    /* -----------------------------
-       EVENT LISTENERS
-    ----------------------------- */
-    document.getElementById("coin-select").addEventListener("change", () => {
-      selectedAsset = document.getElementById("coin-select").value;
-      fetchHistoricalData();
-    });
-    document.getElementById("trading-type").addEventListener("change", () => {
-      // When trading type changes, recalc signals based on existing data.
-      calculateTradingSignal();
-    });
-    document.getElementById("buy-btn").addEventListener("click", buyCrypto);
-    document.getElementById("sell-btn").addEventListener("click", sellCrypto);
+    // Toggle Dark Mode
     document.getElementById("toggle-theme").addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
     });
 
-    /* -----------------------------
-       INITIALIZE
-    ----------------------------- */
-    fetchHistoricalData();
+    // Coin selection
+    document.getElementById("coin-select").addEventListener("change", () => {
+      selectedAsset = document.getElementById("coin-select").value;
+      fetchDataAndRender();
+    });
+
+    /* ---------------------------------------------
+       FETCH & RENDER
+    --------------------------------------------- */
+    async function fetchDataAndRender() {
+      // 1) Fetch live price
+      fetchLivePrice();
+
+      // 2) Fetch candlestick (OHLC) data
+      const ohlcData = await fetchOHLC();
+      if (ohlcData) {
+        renderCandlestickChart(ohlcData);
+      }
+    }
+
+    /* ---------------------------------------------
+       LIVE PRICE (Ticker) from CoinGecko
+    --------------------------------------------- */
+    async function fetchLivePrice() {
+      try {
+        const url = `${COIN_GECKO_API}/simple/price?ids=${selectedAsset}&vs_currencies=usd`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        const price = data[selectedAsset].usd;
+        document.getElementById("live-price").innerText = `$${price.toLocaleString()}`;
+      } catch (err) {
+        console.error("Error fetching live price:", err);
+        document.getElementById("live-price").innerText = "Error loading price";
+      }
+    }
+
+    /* ---------------------------------------------
+       FETCH OHLC (CANDLESTICK) DATA
+       CoinGecko returns [ [timestamp, open, high, low, close], ... ]
+       We'll request last 1 day of data => ~24 hours
+    --------------------------------------------- */
+    async function fetchOHLC() {
+      try {
+        // 'days=1' => last 24 hours of OHLC
+        const url = `${COIN_GECKO_API}/coins/${selectedAsset}/ohlc?vs_currency=usd&days=1`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        // Map to Chart.js financial format
+        // Chart.js wants {x: timestamp, o:..., h:..., l:..., c:...}
+        const ohlc = data.map(candle => {
+          return {
+            x: candle[0],  // timestamp in ms
+            o: candle[1],
+            h: candle[2],
+            l: candle[3],
+            c: candle[4]
+          };
+        });
+        return ohlc;
+      } catch (err) {
+        console.error("Error fetching OHLC data:", err);
+        return null;
+      }
+    }
+
+    /* ---------------------------------------------
+       RENDER CANDLESTICK CHART
+    --------------------------------------------- */
+    function renderCandlestickChart(ohlcData) {
+      // If chart already exists, just update the data
+      if (candlestickChart) {
+        candlestickChart.data.datasets[0].data = ohlcData;
+        candlestickChart.update();
+        return;
+      }
+
+      // Otherwise, create a new chart
+      const ctx = document.getElementById("candlestickChart").getContext("2d");
+      candlestickChart = new Chart(ctx, {
+        type: 'candlestick',
+        data: {
+          datasets: [
+            {
+              label: `${selectedAsset.toUpperCase()} Candlestick`,
+              data: ohlcData,
+              borderColor: 'rgba(0,0,0,1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          // We'll use a time scale on the X axis
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                // Chart.js automatically detects timestamps in ms
+                // We'll display as e.g. "Mar 25, 14:00"
+                tooltipFormat: 'MMM dd, HH:mm'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Price (USD)'
+              },
+              beginAtZero: false
+            }
+          },
+          plugins: {
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            }
+          }
+        }
+      });
+    }
+
+    /* ---------------------------------------------
+       AUTO-REFRESH (REAL-TIME DEMO)
+       Every 30 seconds, re-fetch live price & OHLC
+    --------------------------------------------- */
+    setInterval(fetchDataAndRender, 30000);
+
+    // Initial load
+    fetchDataAndRender();
   </script>
 </body>
 </html>
