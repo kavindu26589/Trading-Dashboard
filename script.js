@@ -3,22 +3,7 @@ let selectedAsset = "bitcoin";
 let priceHistory = [];
 let balance = 10000;
 
-// Fetch historical price data from CoinGecko
-async function fetchHistoricalData() {
-    try {
-        let response = await fetch(`${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`);
-        let data = await response.json();
-        priceHistory = data.prices.map(entry => entry[1]);
-
-        updateChart();  // Ensure this function is defined before calling it
-        calculateIndicators();
-        predictNextPrice();
-    } catch (error) {
-        console.error("Error fetching data:", error);
-    }
-}
-
-// Chart.js setup
+// Chart.js setup (MUST BE DEFINED FIRST)
 let ctx = document.getElementById("priceChart").getContext("2d");
 let priceChart = new Chart(ctx, {
     type: "line",
@@ -33,7 +18,7 @@ let priceChart = new Chart(ctx, {
     }
 });
 
-// ✅ **Define updateChart function**
+// ✅ **Define updateChart function before calling it**
 function updateChart() {
     if (priceHistory.length === 0) return;
 
@@ -42,7 +27,22 @@ function updateChart() {
     priceChart.update();
 }
 
-// Calculate RSI
+// ✅ **Fetch historical price data from CoinGecko**
+async function fetchHistoricalData() {
+    try {
+        let response = await fetch(`${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`);
+        let data = await response.json();
+        priceHistory = data.prices.map(entry => entry[1]);
+
+        updateChart();  // Ensure this function is defined before calling it
+        calculateIndicators();
+        predictNextPrice();
+    } catch (error) {
+        console.error("Error fetching data:", error);
+    }
+}
+
+// ✅ **Calculate RSI**
 function calculateRSI() {
     if (priceHistory.length < 15) return "Insufficient Data";
 
@@ -62,7 +62,7 @@ function calculateRSI() {
     document.getElementById("rsi-value").innerText = rsi.toFixed(2);
 }
 
-// Calculate Bollinger Bands
+// ✅ **Calculate Bollinger Bands**
 function calculateBollingerBands() {
     if (priceHistory.length < 20) return "Insufficient Data";
 
@@ -76,7 +76,7 @@ function calculateBollingerBands() {
     document.getElementById("bollinger-value").innerText = `Upper: $${upperBand}, Lower: $${lowerBand}`;
 }
 
-// LSTM AI Predictions
+// ✅ **LSTM AI Predictions**
 let model;
 async function trainModel() {
     model = tf.sequential();
@@ -103,7 +103,7 @@ async function predictNextPrice() {
     });
 }
 
-// Buy/Sell Simulation
+// ✅ **Buy/Sell Simulation**
 function buyCrypto() {
     let amount = parseFloat(document.getElementById("trade-amount").value);
     let price = priceHistory[priceHistory.length - 1];
@@ -125,5 +125,11 @@ function sellCrypto() {
     document.getElementById("trade-status").innerText = `Sold $${amount} worth of ${selectedAsset}`;
 }
 
-// Fetch data initially
+// ✅ **Event Listener for Coin Selection**
+document.getElementById("coin-select").addEventListener("change", () => {
+    selectedAsset = document.getElementById("coin-select").value;
+    fetchHistoricalData();
+});
+
+// ✅ **Fetch data initially**
 fetchHistoricalData();
