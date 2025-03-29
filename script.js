@@ -1,9 +1,7 @@
-/*******************************************************
+/**************************************************
  * 1) MANUALLY REGISTER THE CANDLESTICK PLUGIN
- *******************************************************/
-const ChartFinancial = window['chartjs-chart-financial']; 
-// The plugin exports a global named "chartjs-chart-financial"
-
+ **************************************************/
+const ChartFinancial = window.ChartFinancial; // from the UMD build
 const {
   CandlestickController,
   CandlestickElement,
@@ -11,7 +9,6 @@ const {
   OhlcElement
 } = ChartFinancial;
 
-// Register them with Chart.js
 Chart.register(
   CandlestickController,
   CandlestickElement,
@@ -19,9 +16,9 @@ Chart.register(
   OhlcElement
 );
 
-/*******************************************************
+/**************************************************
  * 2) GLOBALS & SETUP
- *******************************************************/
+ **************************************************/
 const COIN_GECKO_API = "https://api.coingecko.com/api/v3";
 let selectedAsset = "bitcoin";
 let candlestickChart;
@@ -37,9 +34,9 @@ document.getElementById("coin-select").addEventListener("change", () => {
   fetchDataAndRender();
 });
 
-/*******************************************************
- * 3) FETCH & RENDER
- *******************************************************/
+/**************************************************
+ * 3) FETCH & RENDER FUNCTIONS
+ **************************************************/
 async function fetchDataAndRender() {
   await fetchLivePrice();
   const ohlcData = await fetchOHLC();
@@ -48,9 +45,9 @@ async function fetchDataAndRender() {
   }
 }
 
-/*******************************************************
+/**************************************************
  * 4) FETCH LIVE PRICE
- *******************************************************/
+ **************************************************/
 async function fetchLivePrice() {
   try {
     const url = `${COIN_GECKO_API}/simple/price?ids=${selectedAsset}&vs_currencies=usd`;
@@ -64,21 +61,19 @@ async function fetchLivePrice() {
   }
 }
 
-/*******************************************************
+/**************************************************
  * 5) FETCH OHLC DATA (1 Day)
- *    Returns arrays: [timestamp, open, high, low, close]
- *******************************************************/
+ *    Returns an array of objects: 
+ *    { x: timestamp, o: open, h: high, l: low, c: close }
+ **************************************************/
 async function fetchOHLC() {
   try {
-    // 'days=1' => last 24h of OHLC
     const url = `${COIN_GECKO_API}/coins/${selectedAsset}/ohlc?vs_currency=usd&days=1`;
     const resp = await fetch(url);
     const data = await resp.json();
 
-    // Convert to Chart.js format
-    // { x: timestamp, o:..., h:..., l:..., c:... }
     const ohlc = data.map(candle => ({
-      x: candle[0], // ms timestamp
+      x: candle[0], // timestamp in ms
       o: candle[1],
       h: candle[2],
       l: candle[3],
@@ -91,11 +86,10 @@ async function fetchOHLC() {
   }
 }
 
-/*******************************************************
+/**************************************************
  * 6) RENDER CANDLESTICK CHART
- *******************************************************/
+ **************************************************/
 function renderCandlestickChart(ohlcData) {
-  // If chart exists, update data only
   if (candlestickChart) {
     candlestickChart.data.datasets[0].data = ohlcData;
     candlestickChart.update();
@@ -135,11 +129,10 @@ function renderCandlestickChart(ohlcData) {
   });
 }
 
-/*******************************************************
- * 7) AUTO-REFRESH EVERY 30s
- *******************************************************/
+/**************************************************
+ * 7) AUTO-REFRESH EVERY 30 SECONDS
+ **************************************************/
 setInterval(fetchDataAndRender, 30000);
 
 // Initial load
 fetchDataAndRender();
-
