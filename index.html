@@ -2,24 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Candlestick Chart – Separate Files</title>
-  
-  <!-- Link our CSS -->
+  <title>Trading Dashboard – Signals</title>
+  <!-- Link our CSS file -->
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Load Chart.js (v4) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1"></script>
-  
-  <!-- Load date-fns adapter (for time scale) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0"></script>
-  
-  <!-- Load chartjs-chart-financial UMD build -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0/dist/chartjs-chart-financial.umd.js"></script>
+  <!-- Load Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
-    <h1>Real-Time Candlestick Chart</h1>
-
+    <h1>Trading Dashboard</h1>
     <div class="header">
       <div>
         <label for="coin-select">Select Asset:</label>
@@ -29,20 +20,56 @@
           <option value="dogecoin">Dogecoin (DOGE)</option>
         </select>
       </div>
+      <div>
+        <label for="trading-type">Trading Type:</label>
+        <select id="trading-type">
+          <option value="Swing Trading" selected>Swing Trading</option>
+          <option value="Day Trading">Day Trading</option>
+        </select>
+      </div>
       <button id="toggle-theme">Toggle Dark Mode</button>
     </div>
 
-    <div class="info-box">
+    <!-- Live Price Box -->
+    <div class="box">
       <h2>Live Price</h2>
       <p id="live-price">Loading...</p>
     </div>
 
+    <!-- Price Chart -->
     <div class="chart-container">
-      <canvas id="candlestickChart"></canvas>
+      <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- Technical Indicators Box -->
+    <div class="box">
+      <h2>Technical Indicators</h2>
+      <p>RSI: <span id="rsi-value">Calculating...</span></p>
+      <p>MACD: <span id="macd-value">Calculating...</span></p>
+      <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
+    </div>
+
+    <!-- Trading Signal Box -->
+    <div class="box">
+      <h2>Trading Signal</h2>
+      <div id="trading-signal" class="signal hold">Hold</div>
+      <p style="font-size:0.9em; color:#555;">
+        Signals based on RSI, MACD and Bollinger Bands.
+      </p>
+    </div>
+
+    <!-- Buy/Sell Simulation Box -->
+    <div class="box">
+      <h2>Buy/Sell Simulation</h2>
+      <p>Balance: $<span id="balance">10000</span></p>
+      <input type="number" id="trade-amount" placeholder="Amount in USD" />
+      <button id="buy-btn">Buy</button>
+      <button id="sell-btn">Sell</button>
+      <p id="trade-status"></p>
     </div>
   </div>
-
-  <!-- Load our custom script last -->
+  
+  <!-- Load our custom script -->
   <script src="script.js"></script>
 </body>
 </html>
