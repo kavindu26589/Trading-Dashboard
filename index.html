@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading Dashboard - LSTM Fix</title>
+  <title>Trading Dashboard - LSTM (Debug)</title>
   <!-- Load Chart.js & TensorFlow.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
@@ -48,20 +48,20 @@
     .chart-container {
       position: relative;
       width: 100%;
-      max-width: 600px; /* control overall width */
+      max-width: 600px;
       margin: 0 auto;
     }
     canvas {
       display: block;
-      width: 100%;    /* responsive width */
-      height: auto;   /* let Chart.js control the height via aspect ratio */
+      width: 100%;
+      height: auto;
     }
   </style>
 </head>
 <body>
 
   <div class="container">
-    <h1>Trading Dashboard</h1>
+    <h1>Trading Dashboard (Debug LSTM)</h1>
     <button id="toggle-theme">Toggle Dark Mode</button>
 
     <label for="coin-select">Select Asset:</label>
@@ -76,7 +76,6 @@
       <p id="live-price">Loading...</p>
     </div>
 
-    <!-- Chart Container -->
     <div class="chart-container">
       <canvas id="priceChart"></canvas>
     </div>
@@ -104,16 +103,15 @@
     </div>
   </div>
 
-  <!-- JS at the end of body so DOM is loaded -->
   <script>
     /* -----------------------------------------------------
-       GLOBAL VARIABLES
+       GLOBALS
     ----------------------------------------------------- */
     const API_URL = "https://api.coingecko.com/api/v3/coins/";
     let selectedAsset = "bitcoin";
     let priceHistory = [];
     let balance = 10000;
-    let model; // For TensorFlow.js
+    let model;
 
     /* -----------------------------------------------------
        SET UP CHART.JS
@@ -134,14 +132,11 @@
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,  // Keep the aspect ratio
-        aspectRatio: 2,            // 2 means width is 2x height
+        maintainAspectRatio: true,
+        aspectRatio: 2,
       },
     });
 
-    /* -----------------------------------------------------
-       UPDATE THE CHART
-    ----------------------------------------------------- */
     function updateChart() {
       if (!priceHistory.length) return;
       priceChart.data.labels = priceHistory.map((_, i) => i + 1);
@@ -150,26 +145,21 @@
     }
 
     /* -----------------------------------------------------
-       FETCH HISTORICAL DATA (COINGECKO)
+       FETCH DATA FROM COINGECKO
     ----------------------------------------------------- */
     async function fetchHistoricalData() {
       try {
-        // 30 days of daily data
         const url = `${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`;
         const response = await fetch(url);
         const data = await response.json();
 
-        // data.prices => [ [timestamp, price], [timestamp, price], ... ]
+        // Extract the second item in each [timestamp, price] pair
         priceHistory = data.prices.map(entry => entry[1]);
 
-        // Update chart
         updateChart();
-        // Calculate indicators
         calculateIndicators();
-        // If we've already trained a model, try predicting
         predictNextPrice();
 
-        // Update "Live Price" with the last known price
         const lastPrice = priceHistory[priceHistory.length - 1];
         document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
       } catch (error) {
@@ -195,8 +185,7 @@
       let gains = [], losses = [];
       for (let i = 1; i < priceHistory.length; i++) {
         const diff = priceHistory[i] - priceHistory[i - 1];
-        if (diff > 0) gains.push(diff);
-        else losses.push(Math.abs(diff));
+        diff > 0 ? gains.push(diff) : losses.push(Math.abs(diff));
       }
       const avgGain = gains.reduce((a, b) => a + b, 0) / gains.length;
       const avgLoss = losses.reduce((a, b) => a + b, 0) / losses.length;
@@ -210,7 +199,6 @@
         document.getElementById("macd-value").innerText = "Insufficient Data";
         return;
       }
-      // Basic approach: 12-sample average, 26-sample average
       const shortEMA = average(priceHistory.slice(-12));
       const longEMA = average(priceHistory.slice(-26));
       const macd = shortEMA - longEMA;
@@ -238,45 +226,60 @@
     }
 
     /* -----------------------------------------------------
-       TENSORFLOW.JS (LSTM PREDICTIONS)
-       - We train on the LAST 6 points: 5 for X, 1 for Y
-       - Then we predict 1 step ahead using the last 5 points
+       LSTM TRAIN/ PREDICT (TFJS)
+       Key fix: data must be 3D => [batchSize, timeSteps, features]
     ----------------------------------------------------- */
     async function trainModel() {
       if (priceHistory.length < 6) {
         alert("Not enough data to train model!");
         return;
       }
+
       // Build a simple LSTM
       model = tf.sequential();
-      // inputShape: [timeSteps=5, features=1]
+      // shape [5, 1] for each sample => we only do 1 sample in this demo
       model.add(tf.layers.lstm({ units: 10, inputShape: [5, 1] }));
       model.add(tf.layers.dense({ units: 1 }));
       model.compile({ optimizer: "adam", loss: "meanSquaredError" });
 
-      // Last 6 points => X: first 5, Y: last 1
-      const xsArray = priceHistory.slice(-6, -1); // e.g. indexes [-6, -5, -4, -3, -2]
-      const ysArray = [ priceHistory[priceHistory.length - 1] ]; // the last point
+      // Last 6 data points => first 5 as X, last 1 as Y
+      const xsArray = priceHistory.slice(-6, -1); // 5 points
+      const ysArray = [priceHistory[priceHistory.length - 1]]; // 1 point
 
-      // Reshape to 3D for LSTM: [batchSize=1, timeSteps=5, features=1]
+      console.log("DEBUG: xsArray =>", xsArray);
+      console.log("DEBUG: ysArray =>", ysArray);
+
+      // Check that xsArray is numeric
+      const nonNumeric = xsArray.filter(v => typeof v !== 'number' || isNaN(v));
+      if (nonNumeric.length > 0) {
+        alert("Data not numeric: " + nonNumeric.join(", "));
+        return;
+      }
+
+      // Reshape for LSTM => [batchSize=1, timeSteps=5, features=1]
       const xs = tf.tensor3d([xsArray], [1, 5, 1]);
-      // Output is just 1 scalar: shape [1, 1]
+      // Y => shape [1, 1]
       const ys = tf.tensor2d([ysArray], [1, 1]);
+
+      console.log("DEBUG: xs shape =>", xs.shape);
+      console.log("DEBUG: xs =>", xs.arraySync());
+      console.log("DEBUG: ys =>", ys.arraySync());
 
       await model.fit(xs, ys, { epochs: 50 });
       predictNextPrice();
     }
 
     async function predictNextPrice() {
-      // We need at least 5 data points to do a single-step LSTM prediction
       if (!model || priceHistory.length < 5) return;
 
-      // Last 5 points => shape [1, 5, 1]
+      // Last 5 => shape [1,5,1]
       const inputArray = priceHistory.slice(-5);
-      const inputTensor = tf.tensor3d([inputArray], [1, 5, 1]);
+      console.log("DEBUG: inputArray =>", inputArray);
 
+      const inputTensor = tf.tensor3d([inputArray], [1, 5, 1]);
       const prediction = model.predict(inputTensor);
       const data = await prediction.data();
+
       const predictedValue = data[0].toFixed(2);
       document.getElementById("predicted-price").innerText = `$${predictedValue}`;
     }
@@ -328,7 +331,7 @@
     });
 
     /* -----------------------------------------------------
-       INITIALIZE: FETCH DATA
+       INIT
     ----------------------------------------------------- */
     fetchHistoricalData();
   </script>
