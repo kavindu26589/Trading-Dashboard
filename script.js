@@ -10,12 +10,36 @@ async function fetchHistoricalData() {
         let data = await response.json();
         priceHistory = data.prices.map(entry => entry[1]);
 
-        updateChart();
+        updateChart();  // Ensure this function is defined before calling it
         calculateIndicators();
         predictNextPrice();
     } catch (error) {
         console.error("Error fetching data:", error);
     }
+}
+
+// Chart.js setup
+let ctx = document.getElementById("priceChart").getContext("2d");
+let priceChart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [{
+            label: "Price",
+            data: [],
+            borderColor: "blue",
+            borderWidth: 1
+        }]
+    }
+});
+
+// ✅ **Define updateChart function**
+function updateChart() {
+    if (priceHistory.length === 0) return;
+
+    priceChart.data.labels = Array.from({ length: priceHistory.length }, (_, i) => i + 1);
+    priceChart.data.datasets[0].data = priceHistory;
+    priceChart.update();
 }
 
 // Calculate RSI
@@ -101,5 +125,5 @@ function sellCrypto() {
     document.getElementById("trade-status").innerText = `Sold $${amount} worth of ${selectedAsset}`;
 }
 
-// Fetch data
+// Fetch data initially
 fetchHistoricalData();
