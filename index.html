@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <title>Candlestick Chart – Separate Files</title>
-
+  
   <!-- Link our CSS -->
   <link rel="stylesheet" href="style.css" />
 
   <!-- Load Chart.js (v4) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1"></script>
-
-  <!-- Load date-fns adapter for time scale -->
+  
+  <!-- Load date-fns adapter (for time scale) -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0"></script>
-
-  <!-- Load chartjs-chart-financial (v3) -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0"></script>
+  
+  <!-- Load chartjs-chart-financial UMD build -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@3.0.0/dist/chartjs-chart-financial.umd.js"></script>
 </head>
 <body>
   <div class="container">
@@ -42,7 +42,7 @@
     </div>
   </div>
 
-  <!-- Our custom script at the very end -->
+  <!-- Load our custom script last -->
   <script src="script.js"></script>
 </body>
 </html>
