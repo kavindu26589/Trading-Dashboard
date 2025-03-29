@@ -2,14 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Trading Dashboard – Signals Only</title>
+  <title>Trading Dashboard – Signals & Trading Types</title>
   <!-- Load Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* ---------- Reset & Fonts ---------- */
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -23,13 +21,9 @@
       padding: 20px;
       background: #fff;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    h1 {
-      margin-bottom: 10px;
-      font-size: 2em;
-      color: #2c3e50;
-    }
+    h1 { margin-bottom: 10px; font-size: 2em; color: #2c3e50; }
     /* ---------- Header & Controls ---------- */
     .header {
       display: flex;
@@ -48,9 +42,7 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .header button:hover, .header select:hover {
-      background: #e8e8e8;
-    }
+    .header button:hover, .header select:hover { background: #e8e8e8; }
     /* ---------- Boxes ---------- */
     .box {
       padding: 15px;
@@ -59,10 +51,7 @@
       background: #f7f7f7;
       border: 1px solid #ddd;
     }
-    .box h2 {
-      margin-top: 0;
-      color: #2c3e50;
-    }
+    .box h2 { margin-top: 0; color: #2c3e50; }
     .signal {
       font-size: 1.5em;
       font-weight: bold;
@@ -72,15 +61,9 @@
       text-align: center;
       color: #fff;
     }
-    .signal.buy {
-      background: #27ae60;
-    }
-    .signal.sell {
-      background: #c0392b;
-    }
-    .signal.hold {
-      background: #7f8c8d;
-    }
+    .signal.buy { background: #27ae60; }
+    .signal.sell { background: #c0392b; }
+    .signal.hold { background: #7f8c8d; }
     /* ---------- Chart ---------- */
     .chart-container {
       position: relative;
@@ -88,15 +71,10 @@
       width: 100%;
       max-width: 800px;
     }
-    canvas {
-      width: 100% !important;
-      height: auto !important;
-    }
+    canvas { width: 100% !important; height: auto !important; }
     /* ---------- Responsive ---------- */
     @media (max-width: 600px) {
-      .header {
-        flex-direction: column;
-      }
+      .header { flex-direction: column; }
     }
   </style>
 </head>
@@ -110,6 +88,13 @@
           <option value="bitcoin">Bitcoin (BTC)</option>
           <option value="ethereum">Ethereum (ETH)</option>
           <option value="dogecoin">Dogecoin (DOGE)</option>
+        </select>
+      </div>
+      <div>
+        <label for="trading-type">Trading Type:</label>
+        <select id="trading-type">
+          <option value="Swing Trading" selected>Swing Trading</option>
+          <option value="Day Trading">Day Trading</option>
         </select>
       </div>
       <button id="toggle-theme">Toggle Dark Mode</button>
@@ -139,7 +124,7 @@
       <h2>Trading Signal</h2>
       <div id="trading-signal" class="signal hold">Hold</div>
       <p style="font-size:0.9em; color:#555;">
-        Signals based on RSI (<em>Buy if RSI&lt;30, Sell if RSI&gt;70</em>), MACD, and Bollinger Bands.
+        Signals based on indicators. For Day Trading: RSI (Buy if &lt;40, Sell if &gt;60). For Swing Trading: RSI (Buy if &lt;30, Sell if &gt;70).
       </p>
     </div>
 
@@ -201,18 +186,15 @@
     ----------------------------- */
     async function fetchHistoricalData() {
       try {
-        // Fetch 30 days of daily data
         const url = `${API_URL}${selectedAsset}/market_chart?vs_currency=usd&days=30&interval=daily`;
         const response = await fetch(url);
         const data = await response.json();
         priceHistory = data.prices.map(entry => entry[1]);
 
-        // Update chart & live price
         updateChart();
         const lastPrice = priceHistory[priceHistory.length - 1];
         document.getElementById("live-price").innerText = `$${lastPrice.toFixed(2)}`;
 
-        // Calculate indicators & trading signal
         calculateIndicators();
         calculateTradingSignal();
       } catch (error) {
@@ -238,8 +220,7 @@
       let gains = [], losses = [];
       for (let i = 1; i < priceHistory.length; i++) {
         const diff = priceHistory[i] - priceHistory[i - 1];
-        if (diff > 0) gains.push(diff);
-        else losses.push(Math.abs(diff));
+        diff > 0 ? gains.push(diff) : losses.push(Math.abs(diff));
       }
       const avgGain = gains.reduce((a, b) => a + b, 0) / gains.length;
       const avgLoss = losses.reduce((a, b) => a + b, 0) / losses.length;
@@ -282,34 +263,40 @@
     }
 
     /* -----------------------------
-       TRADING SIGNALS
-       Uses simple thresholds:
-         - RSI: Buy if <30, Sell if >70, else Hold
-         - MACD: Buy if positive, Sell if negative
-         - Bollinger: Buy if current price near lower band, Sell if near upper band
-         Final signal by majority vote (2 or more indicators)
+       TRADING SIGNAL (Adjusted by Trading Type)
     ----------------------------- */
     function calculateTradingSignal() {
       const rsi = calculateRSI();
       const macd = calculateMACD();
       const bb = calculateBollingerBands();
       const currentPrice = priceHistory[priceHistory.length - 1];
-
+      
+      // Get the selected trading type
+      const tradingType = document.getElementById("trading-type").value;
+      
       let rsiSignal = "Hold";
-      if (rsi < 30) rsiSignal = "Buy";
-      else if (rsi > 70) rsiSignal = "Sell";
+      if (tradingType === "Day Trading") {
+        // For Day Trading, use RSI < 40 to buy, > 60 to sell
+        if (rsi < 40) rsiSignal = "Buy";
+        else if (rsi > 60) rsiSignal = "Sell";
+      } else {
+        // For Swing Trading, use RSI < 30 to buy, > 70 to sell
+        if (rsi < 30) rsiSignal = "Buy";
+        else if (rsi > 70) rsiSignal = "Sell";
+      }
 
       let macdSignal = "Hold";
+      // Simplistic: if MACD > 0 then Buy, < 0 then Sell
       if (macd > 0) macdSignal = "Buy";
       else if (macd < 0) macdSignal = "Sell";
 
       let bbSignal = "Hold";
-      // If current price is within 1% of lower band, signal Buy
-      if (currentPrice <= bb.lowerBand * 1.01) bbSignal = "Buy";
-      // If current price is within 1% of upper band, signal Sell
-      else if (currentPrice >= bb.upperBand * 0.99) bbSignal = "Sell";
+      // For Bollinger Bands, use a 1% buffer for Swing Trading, 1.5% for Day Trading
+      const buffer = (tradingType === "Day Trading") ? 1.015 : 1.01;
+      if (currentPrice <= bb.lowerBand * buffer) bbSignal = "Buy";
+      else if (currentPrice >= bb.upperBand / buffer) bbSignal = "Sell";
 
-      // Final signal via majority vote
+      // Majority vote among the three signals
       let buyCount = 0, sellCount = 0;
       [rsiSignal, macdSignal, bbSignal].forEach(signal => {
         if (signal === "Buy") buyCount++;
@@ -319,7 +306,6 @@
       if (buyCount >= 2) finalSignal = "Buy";
       else if (sellCount >= 2) finalSignal = "Sell";
 
-      // Update UI for signal with appropriate color
       const signalDiv = document.getElementById("trading-signal");
       signalDiv.innerText = finalSignal;
       signalDiv.classList.remove("buy", "sell", "hold");
@@ -365,6 +351,10 @@
     document.getElementById("coin-select").addEventListener("change", () => {
       selectedAsset = document.getElementById("coin-select").value;
       fetchHistoricalData();
+    });
+    document.getElementById("trading-type").addEventListener("change", () => {
+      // When trading type changes, recalc signals based on existing data.
+      calculateTradingSignal();
     });
     document.getElementById("buy-btn").addEventListener("click", buyCrypto);
     document.getElementById("sell-btn").addEventListener("click", sellCrypto);
