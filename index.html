@@ -234,52 +234,43 @@
         alert("Not enough data to train model!");
         return;
       }
-
-      // Build a simple LSTM
+    
+      // Build a simple LSTM model
       model = tf.sequential();
-      // shape [5, 1] for each sample => we only do 1 sample in this demo
+      // LSTM expects input shape: [timeSteps, features]. Here, timeSteps = 5 and features = 1.
       model.add(tf.layers.lstm({ units: 10, inputShape: [5, 1] }));
       model.add(tf.layers.dense({ units: 1 }));
       model.compile({ optimizer: "adam", loss: "meanSquaredError" });
-
-      // Last 6 data points => first 5 as X, last 1 as Y
-      const xsArray = priceHistory.slice(-6, -1); // 5 points
-      const ysArray = [priceHistory[priceHistory.length - 1]]; // 1 point
-
+    
+      // Get the last 6 data points: first 5 as input and the 6th as the label.
+      const xsArray = priceHistory.slice(-6, -1).map(Number); // Ensure all values are numbers
+      const ysArray = [ Number(priceHistory[priceHistory.length - 1]) ]; // Single target value
+    
+      // Log for debugging
       console.log("DEBUG: xsArray =>", xsArray);
       console.log("DEBUG: ysArray =>", ysArray);
-
-      // Check that xsArray is numeric
-      const nonNumeric = xsArray.filter(v => typeof v !== 'number' || isNaN(v));
-      if (nonNumeric.length > 0) {
-        alert("Data not numeric: " + nonNumeric.join(", "));
-        return;
-      }
-
-      // Reshape for LSTM => [batchSize=1, timeSteps=5, features=1]
-      const xs = tf.tensor3d([xsArray], [1, 5, 1]);
-      // Y => shape [1, 1]
+    
+      // Reshape for LSTM: [batchSize=1, timeSteps=5, features=1]
+      const xs = tf.tensor3d([xsArray], [1, xsArray.length, 1]);
+      // Output tensor shape: [1, 1]
       const ys = tf.tensor2d([ysArray], [1, 1]);
-
+    
       console.log("DEBUG: xs shape =>", xs.shape);
-      console.log("DEBUG: xs =>", xs.arraySync());
-      console.log("DEBUG: ys =>", ys.arraySync());
-
+      console.log("DEBUG: xs data =>", xs.arraySync());
+      console.log("DEBUG: ys data =>", ys.arraySync());
+    
       await model.fit(xs, ys, { epochs: 50 });
       predictNextPrice();
     }
-
+    
     async function predictNextPrice() {
       if (!model || priceHistory.length < 5) return;
-
-      // Last 5 => shape [1,5,1]
-      const inputArray = priceHistory.slice(-5);
-      console.log("DEBUG: inputArray =>", inputArray);
-
-      const inputTensor = tf.tensor3d([inputArray], [1, 5, 1]);
+    
+      // Use the last 5 data points as input. Ensure they are numbers.
+      const inputArray = priceHistory.slice(-5).map(Number);
+      const inputTensor = tf.tensor3d([inputArray], [1, inputArray.length, 1]);
       const prediction = model.predict(inputTensor);
       const data = await prediction.data();
-
       const predictedValue = data[0].toFixed(2);
       document.getElementById("predicted-price").innerText = `$${predictedValue}`;
     }
