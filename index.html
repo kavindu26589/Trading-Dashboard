@@ -1,56 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trading Dashboard</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Chart.js & TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Trading Dashboard</h1>
-        <button id="toggle-theme">Toggle Dark Mode</button>
+  <div class="container">
+      <h1>Trading Dashboard</h1>
+      <button id="toggle-theme">Toggle Dark Mode</button>
 
-        <label for="coin-select">Select Asset:</label>
-        <select id="coin-select">
-            <option value="bitcoin">Bitcoin (BTC)</option>
-            <option value="ethereum">Ethereum (ETH)</option>
-            <option value="dogecoin">Dogecoin (DOGE)</option>
-        </select>
+      <label for="coin-select">Select Asset:</label>
+      <select id="coin-select">
+          <option value="bitcoin">Bitcoin (BTC)</option>
+          <option value="ethereum">Ethereum (ETH)</option>
+          <option value="dogecoin">Dogecoin (DOGE)</option>
+      </select>
 
-        <div class="info-box">
-            <h2>Live Price</h2>
-            <p id="live-price">Loading...</p>
-        </div>
+      <div class="info-box">
+          <h2>Live Price</h2>
+          <p id="live-price">Loading...</p>
+      </div>
 
-        <canvas id="priceChart"></canvas>
+      <canvas id="priceChart"></canvas>
 
-        <div class="indicator-box">
-            <h2>Indicators</h2>
-            <p>RSI: <span id="rsi-value">Calculating...</span></p>
-            <p>MACD: <span id="macd-value">Calculating...</span></p>
-            <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
-        </div>
+      <div class="indicator-box">
+          <h2>Indicators</h2>
+          <p>RSI: <span id="rsi-value">Calculating...</span></p>
+          <p>MACD: <span id="macd-value">Calculating...</span></p>
+          <p>Bollinger Bands: <span id="bollinger-value">Calculating...</span></p>
+      </div>
 
-        <div class="prediction-box">
-            <h2>AI Predicted Price</h2>
-            <p id="predicted-price">Loading...</p>
-            <button id="train-model">Train LSTM Model</button>
-        </div>
+      <div class="prediction-box">
+          <h2>AI Predicted Price</h2>
+          <p id="predicted-price">Loading...</p>
+          <button id="train-model">Train LSTM Model</button>
+      </div>
 
-        <div class="trading-box">
-            <h2>Buy/Sell Simulation</h2>
-            <p>Balance: $<span id="balance">10000</span></p>
-            <input type="number" id="trade-amount" placeholder="Amount in USD">
-            <button onclick="buyCrypto()">Buy</button>
-            <button onclick="sellCrypto()">Sell</button>
-        </div>
+      <div class="trading-box">
+          <h2>Buy/Sell Simulation</h2>
+          <p>Balance: $<span id="balance">10000</span></p>
+          <input type="number" id="trade-amount" placeholder="Amount in USD" />
+          <button onclick="buyCrypto()">Buy</button>
+          <button onclick="sellCrypto()">Sell</button>
+      </div>
 
-        <p id="trade-status"></p>
-    </div>
+      <p id="trade-status"></p>
+  </div>
 
-    <script src="script.js"></script>
+  <!-- IMPORTANT: Load script.js at the END of the body -->
+  <script src="script.js"></script>
 </body>
 </html>
